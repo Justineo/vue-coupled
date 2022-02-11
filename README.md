@@ -46,6 +46,8 @@ const children = useParent()
 </script>
 ```
 
+### `Option.vue`
+
 ```vue
 <script setup lang="ts">
 import { useChild } from './option-group'
