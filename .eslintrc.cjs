@@ -6,10 +6,13 @@ module.exports = {
   extends: [
     'plugin:vue/vue3-essential',
     'eslint:recommended',
-    '@vue/eslint-config-typescript/recommended',
+    '@vue/eslint-config-typescript',
     '@vue/eslint-config-prettier',
   ],
-  env: {
-    'vue/setup-compiler-macros': true,
+  parserOptions: {
+    ecmaVersion: 'latest',
   },
+  env: {
+    'vue/setup-compiler-macros': true
+  }
 }
