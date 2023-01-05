@@ -12,24 +12,20 @@ import {
   type InjectionKey,
   type VNode,
 } from 'vue'
-import { find, walk, getId } from './utils'
+import { find, walk, getId, shallowEqual } from './utils'
 
 type ChildId = number
 
-type Child = {
-  [key: string]: unknown
-}
-
-type ParentContext<C> = {
-  addChild: (id: ChildId, child: C) => void
+type ParentContext<Child> = {
+  addChild: (id: ChildId, child: Child) => void
   removeChild: (id: ChildId) => void
-  children: Ref<C[]>
+  children: Ref<Child[]>
   unmounting: Ref<boolean>
 }
 
-export function createCoupled<C extends Child = Child>() {
-  const parentKey = Symbol() as InjectionKey<ParentContext<C>>
-  const childKey = Symbol() as InjectionKey<ChildId>
+export function createCoupled<Child extends Record<string, unknown>>() {
+  const parentKey = Symbol('parent') as InjectionKey<ParentContext<Child>>
+  const childKey = Symbol('child') as InjectionKey<ChildId>
 
   function useParent() {
     const instance = getCurrentInstance()
@@ -38,9 +34,9 @@ export function createCoupled<C extends Child = Child>() {
       throw new Error('`useParent` must be called within a setup function.')
     }
 
-    const childrenMap = reactive(new Map<ChildId, C>())
+    const childrenMap = reactive(new Map<ChildId, Child>())
 
-    function addChild(id: ChildId, child: C) {
+    function addChild(id: ChildId, child: Child) {
       childrenMap.set(id, child)
     }
 
@@ -64,7 +60,7 @@ export function createCoupled<C extends Child = Child>() {
       const defaultSlot = find(root, ({ key }) => key === '_default')
 
       if (!defaultSlot) {
-        return null
+        return []
       }
 
       const childIds: ChildId[] = []
@@ -91,20 +87,26 @@ export function createCoupled<C extends Child = Child>() {
       return childIds
     }
 
-    const items = shallowRef<C[] | null>(null)
+    const items = shallowRef<Child[] | null>(null)
+    let itemIds: ChildId[] | null = null
 
     const children = computed(() => {
+      // initial render: use registered order
+      // subsequent render: use subtree order
       return items.value || getChildrenFromIds(Array.from(childrenMap.keys()))
     })
 
     onUpdated(() => {
+      debugger
       const ids = findAllChildrenIds(instance.subTree)
 
-      if (ids) {
-        items.value = getChildrenFromIds(ids)
-      } else {
-        items.value = null
+      // shallowEqual is crucial here to avoid infinite recursion
+      if (shallowEqual(ids, itemIds)) {
+        return
       }
+
+      items.value = getChildrenFromIds(ids)
+      itemIds = ids
     })
 
     const unmounting = shallowRef(false)
@@ -125,7 +127,7 @@ export function createCoupled<C extends Child = Child>() {
     }
   }
 
-  function useChild(props: C) {
+  function useChild(child: Child) {
     const id = getId()
 
     provide(childKey, id)
@@ -138,7 +140,7 @@ export function createCoupled<C extends Child = Child>() {
 
     const { addChild, removeChild, unmounting } = parent
 
-    addChild(id, props)
+    addChild(id, child)
 
     onUnmounted(() => {
       if (unmounting.value) {

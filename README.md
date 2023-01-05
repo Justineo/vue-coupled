@@ -39,7 +39,7 @@ export const { useParent, useChild } = createCoupled<Option>()
 <script setup lang="ts">
 import { useParent } from './option-group'
 
-const children = useParent()
+const { children } = useParent()
 
 // children will be a shallow ref for the reactive options array, whose
 // option data is provided by the `Option` component via `useChild`
