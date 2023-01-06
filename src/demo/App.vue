@@ -34,7 +34,7 @@ function reverse() {
         :value="option.value"
         :label="`${labelPrefix}${option.label}`"
         :key="`#${option.value}`"
-        ><input type="text" v-model="option.label" /></Option
+        >{{ labelPrefix }}<input type="text" v-model="option.label" /></Option
     ></template>
     <Group />
   </Select>
