@@ -97,7 +97,6 @@ export function createCoupled<Child extends Record<string, unknown>>() {
     })
 
     onUpdated(() => {
-      debugger
       const ids = findAllChildrenIds(instance.subTree)
 
       // shallowEqual is crucial here to avoid infinite recursion
