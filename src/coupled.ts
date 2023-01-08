@@ -15,6 +15,7 @@ import {
 import { find, walk, getId, shallowEqual } from './utils'
 
 type ChildId = number
+type MaybeRef<T> = T | Ref<T>
 
 type ParentContext<Child> = {
   addChild: (id: ChildId, child: Child) => void
@@ -23,7 +24,9 @@ type ParentContext<Child> = {
   unmounting: Ref<boolean>
 }
 
-export function createCoupled<Child extends Record<string, unknown>>() {
+export function createCoupled<
+  Child extends MaybeRef<Record<string, unknown>>
+>() {
   const parentKey = Symbol('parent') as InjectionKey<ParentContext<Child>>
   const childKey = Symbol('child') as InjectionKey<ChildId>
 
@@ -57,6 +60,14 @@ export function createCoupled<Child extends Record<string, unknown>>() {
     }
 
     function findAllChildrenIds(root: VNode) {
+      // This is a current limitation that we only look for children
+      // inside the default slot outlet produced by the internal
+      // `renderSlot` render helper, which will wrap the default slot
+      // into a fragment with key value `_default`.
+      // For tempalte `<slot></slot>` outlets this is the current compiled
+      // usage.
+      // But for parent components using render functions, we need to
+      // guarantee that the default slot is rendered with `renderSlot`.
       const defaultSlot = find(root, ({ key }) => key === '_default')
 
       if (!defaultSlot) {

@@ -22,12 +22,17 @@ eg. A `<Select>` / `<Option>` couple:
 ### `option-group.ts`
 
 ```ts
+import type { VNode } from 'vue'
 import { createCoupled } from 'vue-coupled'
 
 type Option = {
-  value: string
+  // props
+  value: string | number
   label: string
   disabled?: boolean
+
+  // computed states or slot renderers
+  render?: () => VNode
 }
 
 export const { useParent, useChild } = createCoupled<Option>()
@@ -36,13 +41,26 @@ export const { useParent, useChild } = createCoupled<Option>()
 ### `Select.vue`
 
 ```vue
-<script setup lang="ts">
+<script lang="ts">
+import { h, defineComponent, renderSlot } from 'vue'
 import { useParent } from './option-group'
 
-const { children } = useParent()
-
-// children will be a shallow ref for the reactive options array, whose
-// option data is provided by the `Option` component via `useChild`
+export default defineComponent({
+  setup(_, { slots }) {
+    const { children: options } = useParent()
+    return () =>
+      h('ul', { class: 'select' }, [
+        renderSlot(slots, 'default'),
+        ...options.value.map((option) =>
+          h(
+            'li',
+            { class: 'option' },
+            option.render ? option.render() : option.label
+          )
+        ),
+      ])
+  },
+})
 </script>
 ```
 
@@ -50,17 +68,36 @@ const { children } = useParent()
 
 ```vue
 <script setup lang="ts">
+import { renderSlot, useSlots } from 'vue'
+import { reactiveComputed } from '@vueuse/core'
 import { useChild } from './option-group'
 
 // Vue doesn't support imported type in defineProps transformation yet
-type Option = {
-  value: string
+type OptionProps = {
+  value: string | number
   label: string
   disabled?: boolean
 }
 
-const props = defineProps<Option>()
+const slots = useSlots()
 
-useChild(props)
+const props = defineProps<OptionProps>()
+
+// Use reactiveComputed from `@vueuse/core` so that we can use computed
+// objects instead of refs.
+const child = reactiveComputed(() => {
+  return {
+    ...props,
+    render: () => renderSlot(slots, 'default', undefined, () => [props.label]),
+  }
+})
+
+useChild(child)
 </script>
+
+<template>
+  <!-- Render a placeholder here -->
+  <div v-if="false" />
+</template>
+
 ```
